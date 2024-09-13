@@ -103,6 +103,11 @@ proc runVM*(prog: seq[Instr], str: string, stp: uint): MatchResult =
             thread.save[instr.svindex] = thread.strindex.int
             thread.pc += 1
             threadPool[1-poolIndex].add(thread)
+          of ANY:
+            if thread.strindex == strLen: break chk
+            thread.pc += 1
+            thread.strindex += uint(str.runeLenAt(thread.strindex))
+            threadPool[1-poolIndex].add(thread)
       j += 1
     while threadPool[poolIndex].len() > 0: discard threadPool[poolIndex].pop()
     poolIndex = 1-poolIndex

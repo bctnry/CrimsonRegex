@@ -122,6 +122,32 @@ proc compileRegexMain(x: Regex, currentSaveId: int): seq[Instr] =
       res.add(Instr(insType: SAVE, svindex: currentSaveId*2))
       res &= compileRegexMain(x.capbody, currentSaveId+1)
       res.add(Instr(insType: SAVE, svindex: currentSaveId*2+1))
+    of ANYCHAR:
+      res.add(Instr(insType: ANY))
+    of REPEAT:
+      let lowerbound = if x.lowerbound <= 0: 0 else: x.lowerbound
+      let upperbound = x.upperbound
+      for i in 0..<lowerbound:
+        res &= compileRegexMain(x.rbody, currentSaveId)
+      if upperbound == -1:
+        # should finish off with a STAR.
+        # NOTE: this is a direct copy of the STAR branch.
+        let e = compileRegexMain(x.rbody, currentSaveId)
+        let xoff = 1
+        let yoff = e.len()+2
+        res.add(Instr(insType: SPLIT, target: @[xoff, yoff]))
+        res &= e
+        res.add(Instr(insType: JUMP, offset: -e.len()-1))
+      else:
+        # should finish it off with multiple OPTIONALs.
+        let diff = upperbound - lowerbound
+        for i in 0..<diff:
+          # NOTE: this is a direct copy of the OPTIONAL branch.
+          let e = compileRegexMain(x.rbody, currentSaveId)
+          let xoff = 1
+          let yoff = 1+e.len()
+          res.add(Instr(insType: SPLIT, target: @[xoff, yoff]))
+          res &= e
   return res
 
 proc compileRegex*(x: Regex): seq[Instr] =

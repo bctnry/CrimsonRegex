@@ -7,20 +7,27 @@ import regexdef
 # AtomicRegex ::= CharOrNormalEsc
 #               | In
 #               | NotIn
+#               | AnyChar
 #               | "(?:" Regex ("|" Regex)* ")"
 #               | "(" Regex ")"
-# RegexSegment ::= AtomicRegex ("?" | "*" | "+")?
+# RegexSegment ::= AtomicRegex ("?" | "*" | "+" | Repeat)?
 # Regex ::= RegexSegment+
 # In ::= "[" (Range|CharOrInEsc) "]"
+# AnyChar ::= "."
 # NotIn ::= "[^" (Range|CharOrInEsc) "]"
 # Range ::= CHAR "-" CHAR
 # CharOrInEsc ::= NonInEscChar | Esc
 # CharOrNormalEsc ::= NonNormalEscChar | Esc
+# Repeat ::= "{" INT "}"
+#          | "{" "," INT "}"
+#          | "{" INT "," "}"
+#          | "{" INT "," INT "}"
 # Esc ::= "\x" /[0-9a-fA-F][0-9a-fA-F]/
 #       | "\u" /[0-9a-fA-F]+/
 #       | "\s"    # whitespace
 #       | "\b" | "\n" | "\t" | "\r" | "\f" | "\v"
 #       | "\." | "\[" | "\\" | "\]" | "\(" | "\)" | "\*" | "\+" | "\?" | "\/"
+#       | "\{  | "\}"
 # NonInEscChar = /[^\[\]\.\\]/
 # NonNormalEscChar = /[^\.\*\?\[\]\\]/
 
@@ -38,6 +45,15 @@ proc isNameHeadChar(x: char): bool =
   ('a' <= x and x <= 'z') or ('A' <= x and x <= 'Z') or x == '_'
 proc isNameChar(x: char): bool =
   ('0' <= x and x <= '9') or x.isNameHeadChar
+proc isDigit(x: char): bool =
+  '0' <= x and x <= '9'
+
+proc parseInt(x: string): int =
+  var res = 0
+  for k in x:
+    res *= 10
+    res += (k.ord - '0'.ord)
+  return res
 
 proc takeName(x: ParserState): Option[string] =
   var i = x.stp
@@ -49,6 +65,17 @@ proc takeName(x: ParserState): Option[string] =
   x.col += i-x.stp
   x.stp = i
   return some(name)
+
+proc takeInt(x: ParserState): Option[int] =
+  var i = x.stp
+  let lenx = x.x.len
+  if i < lenx and x.x[i].isDigit: i += 1
+  else: return none(int)
+  while i < lenx and x.x[i].isDigit: i += 1
+  let s = x.x[x.stp..<i]
+  x.col += i-x.stp
+  x.stp = i
+  return some(s.parseInt)
 
 proc skipWhite(x: ParserState): ParserState =
   var i = x.stp
@@ -177,7 +204,7 @@ proc parseSingleCharEsc(x: ParserState): Option[Rune] =
   elif x.expect("f"): return some("\f".toRunes[0])
   elif x.expect("v"): return some("\v".toRunes[0])
   else:
-    let chkres = x.expectIn(".[]()\\*+?/".toRunes)
+    let chkres = x.expectIn(".[]()\\*+?/{}".toRunes)
     if chkres.isNone: return none(Rune)
     else: return some(chkres.get)
 
@@ -241,6 +268,11 @@ proc parseAtomicRegex(x: ParserState): Option[Regex] =
       let z = x.parseSingleCharEsc
       if z.isNone: x.raiseErrorWithReason("Invalid escape sequence")
       return some(Regex(regexType: CHARACTER, ch: z.get))
+    of '.':
+      i += 1
+      x.stp = i
+      x.col += 1
+      return some(Regex(regexType: ANYCHAR))
     of '(':  # Grouping & capturing
       var shouldCapture = false
       if not x.expect("(?:"):
@@ -313,6 +345,30 @@ proc parseRegexSegment(x: ParserState): Option[Regex] =
         x.col += 1
         x.stp += 1
       res = Regex(regexType: OPTIONAL, obody: res, ogreedy: greedy)
+    of '{':
+      x.col += 1
+      x.stp += 1
+      let lowerbound = x.takeInt
+      if lowerbound.isNone():
+        if not x.peek(","):
+          x.raiseErrorWithReason("Invalid repeat syntax")
+        else:
+          discard x.expect(",")
+          let upperbound = x.takeInt
+          if upperbound.isNone(): x.raiseErrorWithReason("Invalid repeat syntax")
+          if not x.expect("}"): x.raiseErrorWithReason("Invalid repeat syntax")
+          res = Regex(regexType: REPEAT, lowerbound: -1, upperbound: upperbound.get, rbody: res)
+      else:
+        if not x.peek(","):
+          if not x.expect("}"): x.raiseErrorWithReason("Invalid repeat syntax")
+          res = Regex(regexType: REPEAT, lowerbound: lowerbound.get, upperbound: lowerbound.get, rbody: res)
+        else:
+          discard x.expect(",")
+          let upperbound = x.takeInt
+          let upperboundValue = if upperbound.isNone(): -1 else: upperbound.get
+          if not x.expect("}"): x.raiseErrorWithReason("Invalid repeat syntax")
+          if lowerbound.get > upperboundValue and upperboundValue != -1: x.raiseErrorWithReason("Lowerbound cannot be larger than upperbound")
+          res = Regex(regexType: REPEAT, lowerbound: lowerbound.get, upperbound: upperboundValue, rbody: res)
     else:
       discard
   return some(res)

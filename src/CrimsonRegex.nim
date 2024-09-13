@@ -14,10 +14,8 @@ type
   
 proc compileRegex*(x: string): RegexObject =
   let parsed: Regex = x.parse()
-  echo parsed
   let compiled: RegexObject = parsed.compileRegex()
-  echo compiled
-  compiled
+  return compiled
 
 proc match*(x: RegexObject, str: string): MatchResult =
   x.runVM(str, 0)

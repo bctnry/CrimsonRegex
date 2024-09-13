@@ -9,6 +9,8 @@ type
     JUMP
     SPLIT
     SAVE
+    ANY
+    
   Instr* = ref object
     case insType*: InstrType
     of CHAR:
@@ -27,6 +29,8 @@ type
       target*: seq[int]
     of SAVE:
       svindex*: int
+    of ANY:
+      discard
 
 
 proc `$`*(x: Instr): string =
@@ -38,4 +42,5 @@ proc `$`*(x: Instr): string =
     of JUMP: "JUMP " & $x.offset
     of SPLIT: "SPLIT " & $x.target
     of SAVE: "SAVE " & $x.svindex
+    of ANY: "ANY"
     

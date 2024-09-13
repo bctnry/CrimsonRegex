@@ -27,7 +27,6 @@ suite "regexpr \"a*\"":
       
   test "should match \"\"":
     var matchRes = r.match("")
-    echo matchRes
     check (matchRes != nil)
     check (matchRes.matchedString == "")
 
@@ -110,7 +109,6 @@ suite "regexpr \"a*?\"":
       
   test "should match \"\"":
     var matchRes = r.match("")
-    echo matchRes
     check (matchRes != nil)
     check (matchRes.matchedString == "")
 
@@ -145,7 +143,6 @@ suite "regexpr \"a*?\"":
       
   test "should match \"\"":
     var matchRes = r.match("")
-    echo matchRes
     check (matchRes != nil)
     check (matchRes.matchedString == "")
 
@@ -275,3 +272,142 @@ suite "regexpr \"a[bcd]+e\"":
   test "should not match \"ae\"":
     var matchRes = r.match("ae")
     check (matchRes == nil)
+
+suite "regexpr \"(?:a*|b)\"":
+  let r = "(?:a*|b)".compileRegex
+
+  test "should match \"a\"":
+    var matchRes = r.match("a")
+    check (matchRes != nil)
+    check (matchRes.matchedString == "a")
+
+  test "should match \"\"":
+    var matchRes = r.match("b")
+    check (matchRes != nil)
+    check (matchRes.matchedString == "")
+        
+  test "shouldn match \"\"":
+    var matchRes = r.match("c")
+    check (matchRes != nil)
+    check: matchRes.matchedString == ""
+        
+suite "regexpr \".\"":
+  let r = ".".compileRegex
+  
+  test "should match \"a\"":
+    var matchRes = r.match("a")
+    check: matchRes != nil
+    check: matchRes.matchedString == "a"
+  test "should match \"b\"":
+    var matchRes = r.match("b")
+    check: matchRes != nil
+    check: matchRes.matchedString == "b"
+  test "should match \"c\"":
+    var matchRes = r.match("c")
+    check: matchRes != nil
+    check: matchRes.matchedString == "c"
+  test "shouldn't match empty string":
+    var matchRes = r.match("")
+    check: matchRes == nil
+
+suite "regex \"a{3}\"":
+  let r = "a{3}".compileRegex
+
+  test "should match \"aaa\"":
+    var matchRes = r.match("aaa")
+    check: matchRes != nil
+    check: matchRes.matchedString == "aaa"
+
+  test "shouldn't match \"aa\"":
+    var matchRes = r.match("aa")
+    check: matchRes == nil
+
+  test "should match \"aaaa\"":
+    var matchRes = r.match("aaaa")
+    check: matchRes != nil
+    check: matchRes.matchedString == "aaa"
+
+  test "shouldn't match \"abaa\"":
+    var matchRes = r.match("abaa")
+    check: matchRes == nil
+
+suite "regex \"a{,3}\"":
+  let r = "a{,3}".compileRegex
+
+  test "should match \"aaa\"":
+    var matchRes = r.match("aaa")
+    check: matchRes != nil
+    check: matchRes.matchedString == "aaa"
+
+  test "should match \"aa\"":
+    var matchRes = r.match("aa")
+    check: matchRes != nil
+    check: matchRes.matchedString == "aa"
+
+  test "should match \"\"":
+    var matchRes = r.match("")
+    check: matchRes != nil
+    check: matchRes.matchedString == ""
+
+  test "should match \"baa\"":
+    var matchRes = r.match("baa")
+    check: matchRes != nil
+    check: matchRes.matchedString == ""
+
+suite "regex \"a{2,}\"":
+  let r = "a{2,}".compileRegex
+
+  test "should match \"aaa\"":
+    var matchRes = r.match("aaa")
+    check: matchRes != nil
+    check: matchRes.matchedString == "aaa"
+
+  test "should match \"aa\"":
+    var matchRes = r.match("aa")
+    check: matchRes != nil
+    check: matchRes.matchedString == "aa"
+
+  test "shouldn't match \"\"":
+    var matchRes = r.match("")
+    check: matchRes == nil
+
+  test "shouldn't match \"a\"":
+    var matchRes = r.match("a")
+    check: matchRes == nil
+
+  test "shouldn't match \"baa\"":
+    var matchRes = r.match("baa")
+    check: matchRes == nil
+
+
+suite "regex \"a{2,4}\"":
+  let r = "a{2,4}".compileRegex
+
+  test "should match \"aaa\"":
+    var matchRes = r.match("aaa")
+    check: matchRes != nil
+    check: matchRes.matchedString == "aaa"
+
+  test "should match \"aa\"":
+    var matchRes = r.match("aa")
+    check: matchRes != nil
+    check: matchRes.matchedString == "aa"
+
+  test "shouldn't match \"\"":
+    var matchRes = r.match("")
+    check: matchRes == nil
+
+  test "shouldn't match \"a\"":
+    var matchRes = r.match("a")
+    check: matchRes == nil
+
+  test "shouldn't match \"baa\"":
+    var matchRes = r.match("baa")
+    check: matchRes == nil
+
+  test "should match \"aaaaaa\" but matchedString should only have 4 \"a\"s":
+    var matchRes = r.match("aaaaaa")
+    check: matchRes != nil
+    check: matchRes.matchedString == "aaaa"
+
+
